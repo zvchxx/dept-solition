@@ -1,3 +1,4 @@
 from django.contrib import admin
+from user.views import UserModel
 
-# Register your models here.
+admin.site.register(UserModel)

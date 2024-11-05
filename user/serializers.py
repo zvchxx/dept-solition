@@ -38,9 +38,16 @@ class RegisterSerializers(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('confirm_password')  
         user = UserModel.objects.create_user(**validated_data)  
-        return user
+        user.save()
+        return user 
     
     
 class LoginSerializers(serializers.Serializer):
     username = serializers.CharField(max_length=255)
     password = serializers.CharField(max_length=255, write_only=True)
+
+
+class UserModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserModel
+        fields = '__all__'

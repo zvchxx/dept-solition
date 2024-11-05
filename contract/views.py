@@ -1,37 +1,78 @@
-from django.shortcuts import render
-
-from rest_framework.response import Response
-
-from rest_framework import generics, status
-
-from rest_framework.views import APIView
-
-from django.contrib.auth import authenticate
-
+from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAdminUser
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.generics import ListCreateAPIView
+from rest_framework.permissions import IsAuthenticated
 from contract.models import ContractModel
-
-from rest_framework.permissions import AllowAny
-
 from contract.serializers import ContractSerializers
 
-from rest_framework.authtoken.models import Token
 
-
-class Contractview(generics.CreateAPIView):
+class DebtsView(ListCreateAPIView):
     serializer_class = ContractSerializers
-    queryset = ContractModel.objects.all()
-    permission_classes = [AllowAny] 
+    permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        user = self.request.user
+        return ContractModel.objects.filter(user=user, status='active')
 
     def perform_create(self, serializer):
-        contract = serializer.save(
-            who=self.request.user,
-            status=ContractModel.STATUS_CHOICES.waiting.value
-        )
-        return contract
+        serializer.save(user=self.request.user)
 
 
-    def get(self, request, *args, **kwargs):
-        contracts = self.get_object()
-        serializer_data = self.serializer_class(contracts, many=True).data
-        total_borrows = sum(borrow.amount for borrow in contracts if borrow.type == ContractModel.CONTRACT_TYPE.borrowed.value)
+class MyBorrowedDebtsView(ListCreateAPIView):
+    serializer_class = ContractSerializers
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return ContractModel.objects.filter(user=user, debt_type='borrowed', status='active')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, debt_type='borrowed')
+
+
+class MyLentDebtsView(ListCreateAPIView):
+    serializer_class = ContractSerializers
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return ContractModel.objects.filter(user=user, debt_type='lent', status='active')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, debt_type='lent')
+
+
+class InactiveDebtsView(ListCreateAPIView):
+    serializer_class = ContractSerializers
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return ContractModel.objects.filter(user=user, status='inactive')
+
+
+class ChangeDebtStatusView(RetrieveUpdateAPIView):
+    queryset = ContractModel.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        debt = self.get_object()
+        debt.status = 'inactive'
+        debt.save()
+        return Response({"message": "Debt inactivated successfully"})
+
+
+class GetAllDebtsView(ListAPIView):
+    serializer_class = ContractSerializers
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        return ContractModel.objects.all()
+
+
+class DetailedDebtView(RetrieveAPIView):
+    queryset = ContractModel.objects.all()
+    serializer_class = ContractSerializers
+    permission_classes = [IsAdminUser]
